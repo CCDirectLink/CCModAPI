@@ -46,7 +46,13 @@ func list(rw http.ResponseWriter, req *http.Request) {
 }
 
 func info(rw http.ResponseWriter, req *http.Request) {
-	id, err := strconv.ParseInt(req.URL.Path[len("/v1/info/"):], 10, 0)
+	ids := strings.Split(req.URL.Path[len("/v1/info/"):], "/")
+	if len(ids) < 1 {
+		rw.Write([]byte("{\"error\": \"not found\"}"))
+		return
+	}
+
+	id, err := strconv.ParseInt(ids[0], 10, 0)
 	if err != nil {
 		rw.Write([]byte("{\"error\": \"not found\"}"))
 		return
@@ -58,7 +64,19 @@ func info(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	json.NewEncoder(rw).Encode(dbEntry.newest().pkg)
+	var pkg dbPackage
+	if len(ids) >= 2 {
+		var ok bool
+		pkg, ok = dbEntry.versions[ids[1]]
+		if !ok {
+			rw.Write([]byte("{\"error\": \"not found\"}"))
+			return
+		}
+	} else {
+		pkg = dbEntry.newest()
+	}
+
+	json.NewEncoder(rw).Encode(pkg.pkg)
 }
 
 func latest(rw http.ResponseWriter, req *http.Request) {
